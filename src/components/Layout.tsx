@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { semanticSearch } from '../lib/gemini';
+import { basicSearch } from '../lib/gemini';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -64,12 +64,9 @@ export default function Layout({ children }: LayoutProps) {
         return;
       }
 
-      // 2. Build context for Gemini
-      const context = units.map((u: any) => `${u.name} [Type: ${u.type}]: ${u.content?.slice(0, 500)}`).join('\n\n');
-      
-      // 3. Process with Gemini
-      const result = await semanticSearch(searchQuery, context);
-      setSearchResults(result || "No synthesized intelligence available for these parameters.");
+      // 2. Format and display search results
+      const result = await basicSearch(units);
+      setSearchResults(result || "No results available for these parameters.");
     } catch (err) {
       console.error("Search failed", err);
       setSearchResults("Critical system error during intelligence retrieval.");

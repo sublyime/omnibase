@@ -2,10 +2,12 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import Database from "better-sqlite3";
+import pkg from "pg";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
 import crypto from "crypto";
+
+const { Pool } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,13 +15,39 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
-  // Initialize SQLite Database (for prototype, swappable for PG)
-  const db = new Database("omnibase.db");
-  
+  // Initialize PostgreSQL Database
+  const pool = new Pool({
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'NatEvan12!!',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    database: process.env.DB_NAME || 'omnibase'
+  });
+
+  const db = {
+    query: async (text: string, params?: any[]) => {
+      return pool.query(text, params);
+    },
+    prepare: (sql: string) => ({
+      run: async (...params: any[]) => {
+        return pool.query(sql, params);
+      },
+      get: async (...params: any[]) => {
+        const result = await pool.query(sql, params);
+        return result.rows[0];
+      },
+      all: async (...params: any[]) => {
+        const result = await pool.query(sql, params);
+        return result.rows;
+      }
+    })
+  };
+
   // Create tables for knowledge base
-  db.exec(`
+  try {
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS units (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -31,10 +59,11 @@ async function startServer() {
       author_name TEXT,
       metadata TEXT,
       version_count INTEGER DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS versions (
       id TEXT PRIMARY KEY,
       unit_id TEXT NOT NULL,
@@ -43,10 +72,11 @@ async function startServer() {
       author_id TEXT,
       author_name TEXT,
       change_summary TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(unit_id) REFERENCES units(id)
-    );
-
+    )`);
+    
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS comments (
       id TEXT PRIMARY KEY,
       unit_id TEXT NOT NULL,
@@ -54,10 +84,11 @@ async function startServer() {
       user_name TEXT NOT NULL,
       content TEXT NOT NULL,
       parent_id TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(unit_id) REFERENCES units(id)
-    );
-
+    )`);
+    
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS annotations (
       id TEXT PRIMARY KEY,
       unit_id TEXT NOT NULL,
@@ -66,25 +97,31 @@ async function startServer() {
       text TEXT NOT NULL,
       start_index INTEGER,
       end_index INTEGER,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(unit_id) REFERENCES units(id)
-    );
-
+    )`);
+    
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT,
       email TEXT UNIQUE NOT NULL,
       role TEXT DEFAULT 'viewer',
       permissions TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
         id TEXT PRIMARY KEY,
         key TEXT UNIQUE,
         value TEXT
-    );
-  `);
+    )`);
+    
+    console.log('[OmniBase] Database tables initialized successfully');
+  } catch (err) {
+    console.log('[OmniBase] Tables may already exist:', err instanceof Error ? err.message : 'Unknown error');
+  }
 
   app.use(express.json());
 
