@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-enterprise-bg: #020617;
+  --color-enterprise-surface: #0f172a;
+  --color-enterprise-input: #1e293b;
+  --color-enterprise-accent: #6366f1; /* Indigo 500 */
+  --color-enterprise-border: #1e293b;
+  --color-enterprise-text: #cbd5e1; /* Slate 300 */
+  --color-enterprise-muted: #64748b; /* Slate 500 */
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-enterprise-bg text-enterprise-text antialiased;
+  }
+}
+
+.glass-morphism {
+  @apply bg-enterprise-surface/50 backdrop-blur-md border border-enterprise-border;
+}
+
+.sidebar-gradient {
+  @apply bg-enterprise-surface border-r border-enterprise-border;
+}
+
+.table-header {
+  @apply text-[10px] text-enterprise-muted uppercase tracking-widest border-b border-enterprise-border;
+}
+
+.status-badge {
+  @apply px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border;
+}
+

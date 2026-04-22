@@ -1,0 +1,15 @@
+{
+  "name": "OmniBase Enterprise Knowledge Hub",
+  "description": "The definitive enterprise-class knowledge base platform with hierarchical storage, universal file support, and AI-powered semantic search.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "Enterprise Security",
+    "Universal File Support",
+    "AI Semantic Search",
+    "Role-Based Access Control"
+  ]
+}
