@@ -183,117 +183,177 @@ async function startServer() {
   });
 
   // Knowledge Units API
-  app.get("/api/units", (req, res) => {
-    const parentId = req.query.parentId as string || null;
-    const stmt = db.prepare("SELECT * FROM units WHERE parent_id " + (parentId ? "= ?" : "IS NULL"));
-    const units = parentId ? stmt.all(parentId) : stmt.all();
-    res.json(units.map((u: any) => ({ ...u, tags: JSON.parse(u.tags || "[]") })));
-  });
-
-  app.get("/api/units/:id", (req, res) => {
-    const stmt = db.prepare("SELECT * FROM units WHERE id = ?");
-    const unit: any = stmt.get(req.params.id);
-    if (unit) {
-      unit.tags = JSON.parse(unit.tags || "[]");
-      res.json(unit);
-    } else {
-      res.status(404).json({ error: "Not found" });
+  app.get("/api/units", async (req, res) => {
+    try {
+      const parentId = req.query.parentId as string || null;
+      const query = parentId 
+        ? "SELECT * FROM units WHERE parent_id = $1"
+        : "SELECT * FROM units WHERE parent_id IS NULL";
+      const params = parentId ? [parentId] : [];
+      
+      const result = await pool.query(query, params);
+      const units = result.rows.map((u: any) => ({ ...u, tags: JSON.parse(u.tags || "[]") }));
+      res.json(units);
+    } catch (err) {
+      console.error("Error fetching units:", err);
+      res.status(500).json({ error: "Failed to fetch units" });
     }
   });
 
-  app.post("/api/units", (req, res) => {
-    const { id, name, type, parent_id, content, tags, author_id, author_name } = req.body;
-    const stmt = db.prepare(`
-      INSERT INTO units (id, name, type, parent_id, content, tags, author_id, author_name)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, name, type, parent_id, content, JSON.stringify(tags || []), author_id, author_name);
-    
-    // Create initial version
-    const vId = crypto.randomUUID();
-    const vStmt = db.prepare(`
-      INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    vStmt.run(vId, id, 1, content, author_id, author_name, "Initial version");
+  app.get("/api/units/:id", async (req, res) => {
+    try {
+      const result = await pool.query("SELECT * FROM units WHERE id = $1", [req.params.id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      const unit = result.rows[0];
+      unit.tags = JSON.parse(unit.tags || "[]");
+      res.json(unit);
+    } catch (err) {
+      console.error("Error fetching unit:", err);
+      res.status(500).json({ error: "Failed to fetch unit" });
+    }
+  });
 
-    res.status(201).json({ success: true });
+  app.post("/api/units", async (req, res) => {
+    try {
+      const { id, name, type, parent_id, content, tags, author_id, author_name } = req.body;
+      
+      await pool.query(
+        `INSERT INTO units (id, name, type, parent_id, content, tags, author_id, author_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [id, name, type, parent_id, content, JSON.stringify(tags || []), author_id, author_name]
+      );
+      
+      const vId = crypto.randomUUID();
+      await pool.query(
+        `INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [vId, id, 1, content, author_id, author_name, "Initial version"]
+      );
+
+      res.status(201).json({ success: true });
+    } catch (err) {
+      console.error("Error creating unit:", err);
+      res.status(500).json({ error: "Failed to create unit" });
+    }
   });
 
   // Update & Versioning
-  app.patch("/api/units/:id", (req, res) => {
-    const { content, author_id, author_name, change_summary } = req.body;
-    
-    // Start transaction
-    const transaction = db.transaction(() => {
-      const unit: any = db.prepare("SELECT version_count FROM units WHERE id = ?").get(req.params.id);
-      const nextVersion = (unit?.version_count || 0) + 1;
+  app.patch("/api/units/:id", async (req, res) => {
+    try {
+      const { content, author_id, author_name, change_summary } = req.body;
+      
+      const unitResult = await pool.query("SELECT version_count FROM units WHERE id = $1", [req.params.id]);
+      if (unitResult.rows.length === 0) {
+        return res.status(404).json({ error: "Unit not found" });
+      }
+      
+      const nextVersion = (unitResult.rows[0].version_count || 0) + 1;
 
-      db.prepare("UPDATE units SET content = ?, version_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-        .run(content, nextVersion, req.params.id);
+      await pool.query(
+        "UPDATE units SET content = $1, version_count = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
+        [content, nextVersion, req.params.id]
+      );
 
-      db.prepare(`
-        INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(crypto.randomUUID(), req.params.id, nextVersion, content, author_id, author_name, change_summary);
-    });
+      const vId = crypto.randomUUID();
+      await pool.query(
+        `INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [vId, req.params.id, nextVersion, content, author_id, author_name, change_summary]
+      );
 
-    transaction();
-    res.json({ success: true });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error updating unit:", err);
+      res.status(500).json({ error: "Failed to update unit" });
+    }
   });
 
   // Versions API
-  app.get("/api/units/:id/versions", (req, res) => {
-    const stmt = db.prepare("SELECT * FROM versions WHERE unit_id = ? ORDER BY version_number DESC");
-    res.json(stmt.all(req.params.id));
+  app.get("/api/units/:id/versions", async (req, res) => {
+    try {
+      const result = await pool.query(
+        "SELECT * FROM versions WHERE unit_id = $1 ORDER BY version_number DESC",
+        [req.params.id]
+      );
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error fetching versions:", err);
+      res.status(500).json({ error: "Failed to fetch versions" });
+    }
   });
 
   // Comments API
-  app.get("/api/units/:id/comments", (req, res) => {
-    const stmt = db.prepare("SELECT * FROM comments WHERE unit_id = ? ORDER BY timestamp ASC");
-    res.json(stmt.all(req.params.id));
+  app.get("/api/units/:id/comments", async (req, res) => {
+    try {
+      const result = await pool.query(
+        "SELECT * FROM comments WHERE unit_id = $1 ORDER BY timestamp ASC",
+        [req.params.id]
+      );
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
   });
 
-  app.post("/api/units/:id/comments", (req, res) => {
-    const { id, user_id, user_name, content, parent_id } = req.body;
-    const stmt = db.prepare(`
-      INSERT INTO comments (id, unit_id, user_id, user_name, content, parent_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, req.params.id, user_id, user_name, content, parent_id || null);
-    res.status(201).json({ success: true });
+  app.post("/api/units/:id/comments", async (req, res) => {
+    try {
+      const { id, user_id, user_name, content, parent_id } = req.body;
+      await pool.query(
+        `INSERT INTO comments (id, unit_id, user_id, user_name, content, parent_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [id, req.params.id, user_id, user_name, content, parent_id || null]
+      );
+      res.status(201).json({ success: true });
+    } catch (err) {
+      console.error("Error creating comment:", err);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
   });
 
   // Search API with Advanced Filters
-  app.get("/api/search", (req, res) => {
-    const { q, type, author, tag, start, end } = req.query;
-    let queryStr = "SELECT * FROM units WHERE (name LIKE ? OR content LIKE ?)";
-    const params: any[] = [`%${q || ''}%`, `%${q || ''}%`];
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q, type, author, tag, start, end } = req.query;
+      let queryStr = "SELECT * FROM units WHERE (name ILIKE $1 OR content ILIKE $2)";
+      const params: any[] = [`%${q || ''}%`, `%${q || ''}%`];
+      let paramCount = 2;
 
-    if (type) {
-      queryStr += " AND type = ?";
-      params.push(type);
-    }
-    if (author) {
-      queryStr += " AND author_name LIKE ?";
-      params.push(`%${author}%`);
-    }
-    if (tag) {
-      queryStr += " AND tags LIKE ?";
-      params.push(`%${tag}%`);
-    }
-    if (start) {
-      queryStr += " AND updated_at >= ?";
-      params.push(start);
-    }
-    if (end) {
-      queryStr += " AND updated_at <= ?";
-      params.push(end);
-    }
+      if (type) {
+        paramCount++;
+        queryStr += ` AND type = $${paramCount}`;
+        params.push(type);
+      }
+      if (author) {
+        paramCount++;
+        queryStr += ` AND author_name ILIKE $${paramCount}`;
+        params.push(`%${author}%`);
+      }
+      if (tag) {
+        paramCount++;
+        queryStr += ` AND tags ILIKE $${paramCount}`;
+        params.push(`%${tag}%`);
+      }
+      if (start) {
+        paramCount++;
+        queryStr += ` AND updated_at >= $${paramCount}`;
+        params.push(start);
+      }
+      if (end) {
+        paramCount++;
+        queryStr += ` AND updated_at <= $${paramCount}`;
+        params.push(end);
+      }
 
-    const stmt = db.prepare(queryStr);
-    const results = stmt.all(...params);
-    res.json(results.map((u: any) => ({ ...u, tags: JSON.parse(u.tags || "[]") })));
+      const result = await pool.query(queryStr, params);
+      const results = result.rows.map((u: any) => ({ ...u, tags: JSON.parse(u.tags || "[]") }));
+      res.json(results);
+    } catch (err) {
+      console.error("Error searching:", err);
+      res.status(500).json({ error: "Failed to search" });
+    }
   });
 
   // Vite middleware for development
@@ -312,8 +372,20 @@ async function startServer() {
   }
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`[OmniBase] System operational on http://localhost:${PORT}`);
+    console.log(`\n[OmniBase] System operational on http://localhost:${PORT}`);
+    console.log(`[OmniBase] Database: ${process.env.DB_NAME || 'omnibase'} @ ${process.env.DB_HOST || 'localhost'}`);
+    console.log(`[OmniBase] Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\n[OmniBase] Shutting down gracefully...');
+    await pool.end();
+    process.exit(0);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error('[OmniBase] Failed to start server:', err);
+  process.exit(1);
+});

@@ -83,7 +83,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Chart */}
-        <div className="lg:col-span-2 glass-morphism rounded-2xl p-8 shadow-2xl relative overflow-hidden group">
+        <div className="lg:col-span-2 glass-morphism rounded-2xl p-8 shadow-2xl relative overflow-hidden group flex flex-col">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
              <TrendingUp size={120} strokeWidth={1} />
           </div>
@@ -98,8 +98,8 @@ export default function Dashboard() {
             </select>
           </div>
           
-          <div className="h-[320px] w-full relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 min-h-[320px] w-full relative z-10">
+            <ResponsiveContainer width="100%" height={320} minWidth={200}>
               <AreaChart data={DATA}>
                 <defs>
                   <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
