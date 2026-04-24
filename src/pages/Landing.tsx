@@ -29,7 +29,7 @@ export default function Landing() {
           <NavLink href="#security">Encryption</NavLink>
           <NavLink href="#pricing">Licensing</NavLink>
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/login')}
             className="px-5 py-2.5 bg-indigo-600 text-white rounded font-bold text-xs uppercase tracking-widest hover:bg-indigo-500 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all active:scale-95"
           >
             Terminal Access
@@ -59,7 +59,7 @@ export default function Landing() {
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
             <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login')}
               className="px-8 py-4 bg-indigo-600 text-white rounded font-bold text-sm tracking-[0.15em] uppercase shadow-2xl shadow-indigo-500/20 flex items-center gap-3 transition-all hover:bg-indigo-500"
             >
               Initialize Node

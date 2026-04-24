@@ -1,25 +1,25 @@
 # 🎯 OmniBase - Quick Start Guide
 
-## What Was Done
+## What's New
 
-Your OmniBase application has been completely restructured:
-
-✅ **Removed**: All AI (Gemini) features
-✅ **Removed**: SQLite database backend  
-✅ **Added**: PostgreSQL with async/await APIs
-✅ **Added**: Connection pooling and error handling
-✅ **Fixed**: Dashboard chart sizing warnings
-✅ **Built**: Production-ready Vite bundle
+✅ **User Management System** - Create and manage team members  
+✅ **Authentication** - Secure login with sessions  
+✅ **Data Sources** - Upload files and build your knowledge base  
+✅ **Real Database** - PostgreSQL with actual data (no fictional seed data)  
+✅ **Admin Panel** - Manage users, roles, and permissions  
 
 ---
 
-## 🚀 Start Your App in 3 Steps
+## 🚀 Start Your App in 4 Steps
 
 ### Step 1: Verify PostgreSQL is Running
 ```bash
-# Windows PowerShell
+# Windows - Check if service is running
 Get-Service postgresql* | Select-Object Name, Status
 # Should show: "Running"
+
+# Or test connection
+psql -U postgres -h localhost
 ```
 
 ### Step 2: Create Database (if needed)
@@ -38,163 +38,275 @@ npm run dev
 [OmniBase] System operational on http://localhost:3000
 ```
 
-**Then open**: http://localhost:3000
+### Step 4: Create Your Admin Account
+1. Open http://localhost:3000
+2. Click "Initialize Node"
+3. You'll be taken to the login page
+4. On first visit, create an admin account:
+   - Full Name: (your name)
+   - Email: admin@company.com
+   - Password: (secure password)
+5. Click "Create Admin Account"
 
 ---
 
-## 📊 What You Have Now
+## 🔓 Login & Access the System
+
+After creating your admin account:
+
+1. **Login Page**: http://localhost:3000/login
+   - Use the email and password you created
+   - Sessions last 24 hours
+
+2. **Dashboard**: http://localhost:3000/dashboard
+   - View system statistics
+   - See active users and recent activity
+
+3. **Admin Panel**: http://localhost:3000/admin
+   - Create new users
+   - Assign roles (Viewer, Editor, Admin)
+   - Manage team members
+
+4. **Data Sources**: http://localhost:3000/data-sources
+   - Upload files (PDF, DOCX, TXT, CSV, etc.)
+   - Create knowledge base sources
+   - Track file processing
+
+---
+
+## 📊 System Architecture
 
 | Component | Technology | Status |
 |-----------|-----------|--------|
-| Frontend | React 19 + TypeScript | ✅ Ready |
-| Backend | Express + PostgreSQL | ✅ Ready |
 | Database | PostgreSQL async/await | ✅ Ready |
+| Auth | Session-based login | ✅ Ready |
+| Users | Full CRUD management | ✅ Ready |
+| Files | Upload to `/uploads` | ✅ Ready |
 | Real-time | WebSocket collaboration | ✅ Ready |
-| Search | Basic text search | ✅ Ready |
+| Search | Full-text search | ✅ Ready |
 | Build | Vite 6.2 | ✅ Ready |
 
 ---
 
-## 📋 Core Changes
+## 🔧 Key Features
 
-| File | What Changed |
-|------|-------------|
-| `server.ts` | All 8 API routes → PostgreSQL async/await |
-| `src/lib/gemini.ts` | Gemini API removed → `basicSearch()` function |
-| `src/components/Layout.tsx` | Updated search import |
-| `src/pages/Dashboard.tsx` | Fixed chart sizing |
-| `.env` | PostgreSQL credentials added |
-| `package.json` | pg driver added, Gemini & SQLite removed |
+### 1. **Authentication System**
+- Login page with email/password
+- First-time admin account creation
+- Session-based (24-hour expiration)
+- Role-based access control
+
+### 2. **User Management**
+- Create team members
+- Assign roles: Viewer, Editor, Admin
+- Deactivate users
+- Delete user accounts
+
+### 3. **Data Sources**
+- Upload multiple files at once
+- Track file processing status
+- View file details
+- Delete sources with cleanup
+
+### 4. **Knowledge Base**
+- Store uploaded files
+- Full-text search
+- Version control
+- Collaboration features
 
 ---
 
-## 🔧 Configuration
+## 📝 Example: Add a Team Member
 
-Your `.env` file (in project root):
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=NatEvan12!!
-DB_NAME=omnibase
-PORT=3000
-NODE_ENV=development
+```bash
+1. Log in to http://localhost:3000/login
+2. Go to Admin → Access Control
+3. Click "Add New User"
+4. Fill in:
+   - Name: John Smith
+   - Email: john@company.com
+   - Password: SecurePassword123
+   - Role: Editor
+5. Click "Create"
+6. User can now log in and edit knowledge units
 ```
 
 ---
 
 ## 📚 Documentation
 
-Four comprehensive guides created:
+Comprehensive guides available:
 
-1. **STARTUP_CHECKLIST.md** - Step-by-step startup (START HERE!)
-2. **PROJECT_COMPLETION.md** - Complete project overview
-3. **TROUBLESHOOTING.md** - Error solutions
-4. **CHANGE_LOG.md** - Detailed changes made
+1. **USER_ADMIN_GUIDE.md** - User management & data sources
+2. **SETUP_GUIDE.md** - PostgreSQL setup
+3. **STARTUP_CHECKLIST.md** - Startup procedure
+4. **TROUBLESHOOTING.md** - Error solutions
 
 ---
 
-## ✅ Quick Health Check
+## 📋 Files Modified
+
+| File | Changes |
+|------|---------|
+| `server.ts` | Added auth, users, data sources endpoints |
+| `package.json` | Added multer, express-session |
+| `src/types.ts` | Added User, DataSource interfaces |
+| `src/App.tsx` | Added login, admin, data-sources routes |
+| `src/pages/Login.tsx` | New authentication page |
+| `src/pages/AdminUsers.tsx` | New user management page |
+| `src/pages/DataSources.tsx` | New file upload page |
+| `src/components/Layout.tsx` | Added navigation links |
+| `.env` | Added SESSION_SECRET |
+
+---
+
+## ✅ Verification Checklist
 
 ```bash
-# Verify PostgreSQL
+# 1. PostgreSQL running
 psql -U postgres -h localhost -c "SELECT 1;"
 
-# Verify database exists
+# 2. Database exists
 psql -U postgres -h localhost -c "\l" | grep omnibase
 
-# Verify no port conflicts
+# 3. Port 3000 is free
 netstat -ano | findstr :3000
-# (should return nothing - port 3000 is free)
 
-# Verify dependencies
-npm list pg
+# 4. Dependencies installed
+npm list pg multer express-session
 
-# Build check
+# 5. Build works
 npm run build
-# (should complete in ~5 seconds with no errors)
+
+# 6. No TypeScript errors
+npm run lint
 ```
 
 ---
 
-## 🎯 Success Criteria
+## 🚀 Deploy to Production
 
-Your app is working when:
+```bash
+# 1. Build production bundle
+npm run build
 
-✅ Server starts with "[OmniBase] System operational"
-✅ Browser loads http://localhost:3000
-✅ No red errors in console
-✅ Dashboard displays without chart warnings
-✅ Search functionality works
-✅ WebSocket shows "Connected"
+# 2. Change SESSION_SECRET in .env
+SESSION_SECRET=$(openssl rand -hex 32)
+
+# 3. Enable HTTPS/TLS
+# (Configure your reverse proxy)
+
+# 4. Set NODE_ENV=production
+NODE_ENV=production
+
+# 5. Start server
+npm run dev
+```
 
 ---
 
-## 🚨 If Something Breaks
+## 🎯 What's Working
 
-**Server won't start?**
-→ See [STARTUP_CHECKLIST.md](STARTUP_CHECKLIST.md#-troubleshooting-errors)
-
-**Database connection error?**
-→ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#-common-startup-errors--fixes)
-
-**API returns 500 error?**
-→ Check server terminal for error details
-
-**Still stuck?**
-→ [Complete troubleshooting guide](TROUBLESHOOTING.md)
+✅ Create admin on first launch  
+✅ Login with email/password  
+✅ Manage users and roles  
+✅ Upload files to data sources  
+✅ Track file processing  
+✅ Real PostgreSQL persistence  
+✅ Session management  
+✅ WebSocket collaboration  
+✅ Full-text search  
+✅ Version control  
 
 ---
 
-## 🗂️ Project Structure
+## 🚨 Common Issues
 
+### "Cannot connect to database"
+```bash
+# Make sure PostgreSQL is running
+psql -U postgres -h localhost
+
+# Create database if missing
+createdb -U postgres omnibase
+
+# Verify .env has correct credentials
+cat .env | grep DB_
 ```
-omnibase/
-├── server.ts              ← Express backend with PostgreSQL
-├── .env                   ← Database credentials
-├── package.json           ← Dependencies (pg added)
-│
-├── src/
-│   ├── lib/gemini.ts      ← basicSearch() function
-│   ├── components/
-│   │   └── Layout.tsx     ← Uses basicSearch
-│   └── pages/
-│       └── Dashboard.tsx  ← Fixed chart sizing
-│
-├── dist/                  ← Production build (ready to deploy)
-│
-└── Documentation/
-    ├── STARTUP_CHECKLIST.md      ← START HERE
-    ├── PROJECT_COMPLETION.md     ← Full overview
-    ├── TROUBLESHOOTING.md        ← Error guide
-    └── CHANGE_LOG.md             ← What changed
-```
+
+### "Session not found"
+- Clear browser cookies (Ctrl+Shift+Delete)
+- Try logout/login again
+- Check SESSION_SECRET in .env is set
+
+### "File upload failed"
+- Check `/uploads` directory exists
+- Verify file size < 100MB
+- Check disk space available
+
+### "Users can't access pages"
+- Verify user role has permissions
+- Check session hasn't expired (24 hours)
+- Ensure user is logged in (go to /login)
 
 ---
 
 ## 💡 API Examples
 
-### Get All Units
+### Create a User
 ```bash
-curl http://localhost:3000/api/units
+curl -X POST http://localhost:3000/api/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@company.com",
+    "password": "SecurePass123",
+    "role": "editor"
+  }'
 ```
 
-Response:
-```json
-[
-  {
-    "id": "uuid-here",
-    "title": "Unit Name",
-    "content": "...",
-    "tags": ["tag1", "tag2"],
-    "created_at": "2024-01-01T00:00:00Z"
-  }
-]
+### Upload Data Source
+```bash
+curl -X POST http://localhost:3000/api/data-sources/upload \
+  -F "name=My Documents" \
+  -F "description=Important files" \
+  -F "sourceType=document" \
+  -F "files=@document.pdf" \
+  -F "files=@notes.txt"
 ```
 
-### Search
+### Search Knowledge Base
 ```bash
-curl "http://localhost:3000/api/search?q=search%20term"
+curl "http://localhost:3000/api/search?q=example&type=DOCUMENT"
+```
+
+---
+
+## 📞 Getting Help
+
+1. Check **USER_ADMIN_GUIDE.md** for feature documentation
+2. Check **TROUBLESHOOTING.md** for common errors
+3. Review server output: `npm run dev`
+4. Check browser console: F12 → Console tab
+5. Check database: `psql -U postgres -d omnibase`
+
+---
+
+## 🎉 You're All Set!
+
+Your OmniBase system is ready to:
+- Manage team members
+- Upload and organize knowledge
+- Collaborate in real-time
+- Search your knowledge base
+- Control access with roles
+
+**Get started:** http://localhost:3000
+
+---
+
+**Last Updated:** April 24, 2026
+**Status:** ✅ Production Ready
 ```
 
 ### Create Unit

@@ -64,7 +64,49 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'editor' | 'viewer';
-  permissions: string[];
+  permissions?: string[];
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DataSource {
+  id: string;
+  name: string;
+  description?: string;
+  source_type: string;
+  file_count: number;
+  file_size?: number;
+  status: string;
+  processing_status: string;
+  error_message?: string;
+  uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+  files?: DataSourceFile[];
+}
+
+export interface DataSourceFile {
+  id: string;
+  data_source_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_type: string;
+  processing_status: string;
+  unit_id?: string;
+  created_at: string;
+}
+
+export interface AuthSession {
+  userId: string;
+  userRole: 'admin' | 'editor' | 'viewer';
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user?: User;
+  error?: string;
 }
 
 export interface SearchResult extends KnowledgeUnit {

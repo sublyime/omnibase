@@ -103,6 +103,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <SideItem to="/dashboard" icon={<LayoutDashboard size={18} />} label="Dashboard" expanded={isSidebarOpen} />
           <SideItem to="/explorer" icon={<FolderTree size={18} />} label="Knowledge Explorer" expanded={isSidebarOpen} />
+          <SideItem to="/data-sources" icon={<Database size={18} />} label="Data Sources" expanded={isSidebarOpen} />
           <SideItem to="/admin" icon={<Users size={18} />} label="Access Control" expanded={isSidebarOpen} />
           <SideItem to="/security" icon={<ShieldCheck size={18} />} label="Security & Audit" expanded={isSidebarOpen} />
           <SideItem to="/billing" icon={<CreditCard size={18} />} label="License & Billing" expanded={isSidebarOpen} />
