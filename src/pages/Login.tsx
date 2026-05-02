@@ -24,8 +24,14 @@ export default function Login() {
   const checkSetupStatus = async () => {
     try {
       const response = await fetch('/api/setup/status');
+      
+      if (!response.ok) {
+        setIsInitialized(false);
+        return;
+      }
+      
       const data = await response.json();
-      setIsInitialized(data.initialized);
+      setIsInitialized(data.initialized || false);
     } catch (err) {
       console.error('Failed to check setup status', err);
       setIsInitialized(false);
@@ -89,7 +95,10 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Initialization failed');
+        const errorMsg = data.details 
+          ? `${data.error} - ${data.details}` 
+          : (data.error || 'Initialization failed');
+        throw new Error(errorMsg);
       }
 
       setIsInitialized(true);
@@ -128,7 +137,7 @@ export default function Login() {
               <h2 className="text-2xl font-bold text-white mb-6">Initialize Admin Account</h2>
               
               {initError && (
-                <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300 flex gap-2">
+                <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300 flex gap-2 text-sm break-words">
                   <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                   <div>{initError}</div>
                 </div>

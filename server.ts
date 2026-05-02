@@ -15,6 +15,13 @@ const { Pool } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Helper function for safe UUID generation across all Node.js versions
+const generateId = () => {
+  return typeof crypto.randomUUID === 'function' 
+    ? crypto.randomUUID() 
+    : crypto.randomBytes(16).toString('hex');
+};
+
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -37,7 +44,7 @@ const upload = multer({ storage });
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  const PORT = process.env.PORT || 3000;
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
   // Initialize PostgreSQL Database
   const pool = new Pool({
@@ -281,23 +288,24 @@ async function startServer() {
   }
 
   // API Routes
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", (req: any, res: any) => {
     res.json({ status: "ok", engine: "OmniBase Core v1.1.0" });
   });
 
   // ============= SETUP & INITIALIZATION =============
   
-  app.get("/api/setup/status", async (req, res) => {
+  app.get("/api/setup/status", async (req: any, res: any) => {
     try {
       const result = await pool.query('SELECT COUNT(*) as count FROM users');
       const hasUsers = parseInt(result.rows[0].count) > 0;
       res.json({ initialized: hasUsers });
     } catch (err) {
+      console.error("Setup status check failed:", err);
       res.status(500).json({ error: "Failed to check setup status" });
     }
   });
 
-  app.post("/api/setup/init-admin", async (req, res) => {
+  app.post("/api/setup/init-admin", async (req: any, res: any) => {
     try {
       // Check if system is already initialized
       const result = await pool.query('SELECT COUNT(*) as count FROM users');
@@ -312,7 +320,7 @@ async function startServer() {
       }
 
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-      const userId = crypto.randomUUID();
+      const userId = generateId();
       
       await pool.query(
         `INSERT INTO users (id, name, email, password_hash, role)
@@ -329,13 +337,16 @@ async function startServer() {
       });
     } catch (err) {
       console.error("Error initializing admin:", err);
-      res.status(500).json({ error: "Failed to initialize admin" });
+      res.status(500).json({ 
+        error: "Failed to initialize admin", 
+        details: err instanceof Error ? err.message : String(err) 
+      });
     }
   });
 
   // ============= AUTHENTICATION ENDPOINTS =============
   
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", async (req: any, res: any) => {
     try {
       const { name, email, password, role } = req.body;
       
@@ -347,7 +358,7 @@ async function startServer() {
       
       // Hash password (in production, use bcrypt)
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-      const userId = crypto.randomUUID();
+      const userId = generateId();
       
       await pool.query(
         `INSERT INTO users (id, name, email, password_hash, role)
@@ -368,7 +379,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", async (req: any, res: any) => {
     try {
       const { email, password } = req.body;
       
@@ -396,8 +407,8 @@ async function startServer() {
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
+  app.post("/api/auth/logout", (req: any, res: any) => {
+    req.session.destroy((err: any) => {
       if (err) {
         return res.status(500).json({ error: "Failed to logout" });
       }
@@ -405,7 +416,7 @@ async function startServer() {
     });
   });
 
-  app.get("/api/auth/me", authenticateSession, async (req, res) => {
+  app.get("/api/auth/me", authenticateSession, async (req: any, res: any) => {
     try {
       const result = await pool.query(
         'SELECT id, name, email, role FROM users WHERE id = $1',
@@ -423,7 +434,7 @@ async function startServer() {
 
   // ============= USER MANAGEMENT ENDPOINTS =============
   
-  app.get("/api/users", requireAdmin, async (req, res) => {
+  app.get("/api/users", requireAdmin, async (req: any, res: any) => {
     try {
       const result = await pool.query(
         'SELECT id, name, email, role, is_active, created_at FROM users ORDER BY created_at DESC'
@@ -435,7 +446,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/users", requireAdmin, async (req, res) => {
+  app.post("/api/users", requireAdmin, async (req: any, res: any) => {
     try {
       const { name, email, password, role } = req.body;
       
@@ -446,7 +457,7 @@ async function startServer() {
       }
       
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-      const userId = crypto.randomUUID();
+      const userId = generateId();
       
       await pool.query(
         `INSERT INTO users (id, name, email, password_hash, role)
@@ -464,7 +475,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/users/:id", requireAdmin, async (req, res) => {
+  app.put("/api/users/:id", requireAdmin, async (req: any, res: any) => {
     try {
       const { name, email, role, is_active } = req.body;
       const userId = req.params.id;
@@ -482,7 +493,7 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/users/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/users/:id", requireAdmin, async (req: any, res: any) => {
     try {
       const userId = req.params.id;
       
@@ -501,7 +512,7 @@ async function startServer() {
 
   // ============= DATA SOURCES ENDPOINTS =============
   
-  app.get("/api/data-sources", authenticateSession, async (req, res) => {
+  app.get("/api/data-sources", authenticateSession, async (req: any, res: any) => {
     try {
       const result = await pool.query(
         `SELECT id, name, description, source_type, file_count, status, processing_status, 
@@ -514,7 +525,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/data-sources/upload", authenticateSession, upload.array('files'), async (req, res) => {
+  app.post("/api/data-sources/upload", authenticateSession, upload.array('files'), async (req: any, res: any) => {
     try {
       const { name, description, sourceType } = req.body;
       const files = req.files as any[];
@@ -523,7 +534,7 @@ async function startServer() {
         return res.status(400).json({ error: 'No files provided' });
       }
       
-      const dataSourceId = crypto.randomUUID();
+      const dataSourceId = generateId();
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
       
       // Create data source record
@@ -535,7 +546,7 @@ async function startServer() {
       
       // Create file records
       for (const file of files) {
-        const fileId = crypto.randomUUID();
+        const fileId = generateId();
         await pool.query(
           `INSERT INTO data_source_files (id, data_source_id, file_name, file_path, file_size, file_type)
            VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -554,7 +565,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/data-sources/:id", authenticateSession, async (req, res) => {
+  app.get("/api/data-sources/:id", authenticateSession, async (req: any, res: any) => {
     try {
       const result = await pool.query(
         'SELECT * FROM data_sources WHERE id = $1',
@@ -581,7 +592,7 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/data-sources/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/data-sources/:id", requireAdmin, async (req: any, res: any) => {
     try {
       const dataSourceId = req.params.id;
       
@@ -609,7 +620,7 @@ async function startServer() {
   });
 
   // ============= KNOWLEDGE UNITS (existing) ============= 
-  app.get("/api/units", async (req, res) => {
+  app.get("/api/units", async (req: any, res: any) => {
     try {
       const parentId = req.query.parentId as string || null;
       const query = parentId 
@@ -626,7 +637,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/units/:id", async (req, res) => {
+  app.get("/api/units/:id", async (req: any, res: any) => {
     try {
       const result = await pool.query("SELECT * FROM units WHERE id = $1", [req.params.id]);
       if (result.rows.length === 0) {
@@ -641,7 +652,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/units", async (req, res) => {
+  app.post("/api/units", async (req: any, res: any) => {
     try {
       const { id, name, type, parent_id, content, tags, author_id, author_name } = req.body;
       
@@ -651,7 +662,7 @@ async function startServer() {
         [id, name, type, parent_id, content, JSON.stringify(tags || []), author_id, author_name]
       );
       
-      const vId = crypto.randomUUID();
+      const vId = generateId();
       await pool.query(
         `INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -666,7 +677,7 @@ async function startServer() {
   });
 
   // Update & Versioning
-  app.patch("/api/units/:id", async (req, res) => {
+  app.patch("/api/units/:id", async (req: any, res: any) => {
     try {
       const { content, author_id, author_name, change_summary } = req.body;
       
@@ -682,7 +693,7 @@ async function startServer() {
         [content, nextVersion, req.params.id]
       );
 
-      const vId = crypto.randomUUID();
+      const vId = generateId();
       await pool.query(
         `INSERT INTO versions (id, unit_id, version_number, content, author_id, author_name, change_summary)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -697,7 +708,7 @@ async function startServer() {
   });
 
   // Versions API
-  app.get("/api/units/:id/versions", async (req, res) => {
+  app.get("/api/units/:id/versions", async (req: any, res: any) => {
     try {
       const result = await pool.query(
         "SELECT * FROM versions WHERE unit_id = $1 ORDER BY version_number DESC",
@@ -711,7 +722,7 @@ async function startServer() {
   });
 
   // Comments API
-  app.get("/api/units/:id/comments", async (req, res) => {
+  app.get("/api/units/:id/comments", async (req: any, res: any) => {
     try {
       const result = await pool.query(
         "SELECT * FROM comments WHERE unit_id = $1 ORDER BY timestamp ASC",
@@ -724,7 +735,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/units/:id/comments", async (req, res) => {
+  app.post("/api/units/:id/comments", async (req: any, res: any) => {
     try {
       const { id, user_id, user_name, content, parent_id } = req.body;
       await pool.query(
@@ -740,7 +751,7 @@ async function startServer() {
   });
 
   // Search API with Advanced Filters
-  app.get("/api/search", async (req, res) => {
+  app.get("/api/search", async (req: any, res: any) => {
     try {
       const { q, type, author, tag, start, end } = req.query;
       let queryStr = "SELECT * FROM units WHERE (name ILIKE $1 OR content ILIKE $2)";
@@ -792,7 +803,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*", (req: any, res: any) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
